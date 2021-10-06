@@ -53,9 +53,9 @@ We also take into consideration the answers to the technical questions and what 
 
 In any case:
 
-- Your code should run.
-- Feel free to use whatever frameworks / libraries / webservices you like.
-- 
+- Your code should run
+- Feel free to use whatever frameworks / libraries / webservices you like
+- Go nuts on the things you're good at
 
 ### How we work together on this
 
