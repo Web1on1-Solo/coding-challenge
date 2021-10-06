@@ -14,7 +14,7 @@ It consists of two parts:
 
 Our developers have their own test/demo organization on the production system. To create one of your own, run through our onboarding bot, and make sure to prefix the organization name with `DEVELOPER:`
 
-Go ahead, create an account, test out the widget and have a conversation, and add some resources (forms, articles, bots..).
+Go ahead, create a trial account, test out the widget and have a conversation, and add some resources (forms, articles, bots..).
 
 ## Coding Challenge: Create a Video Appointment bot
 
