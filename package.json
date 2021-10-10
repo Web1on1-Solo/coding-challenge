@@ -1,8 +1,27 @@
 {
-  "dependencies": {
-    "chipchat": "^0.1"
-  },
+  "license": "MIT",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node -r esm src/index.js",
+    "dev": "nodemon --watch",
+    "test": "jest",
+    "lint": "eslint "
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.[t|j]sx?$": "babel-jest"
+    }
+  },
+  "dependencies": {
+    "chipchat": "^0.1",
+    "config": "^3.3.6",
+    "esm": "^3.2.25"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.15.8",
+    "babel-jest": "^27.2.5",
+    "eslint": "^8.0.0",
+    "eslint-plugin-chatshipper": "git+https://github.com/chatshipper/estlint-plugin-chatshipper#master",
+    "jest": "^27.2.5",
+    "nodemon": "^2.0.13"
   }
 }

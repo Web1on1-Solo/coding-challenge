@@ -1,0 +1,38 @@
+export const mockMessage = {
+  organization: '615ed599213d45001efabe66',
+  orgPath: '563f8098396c50df77857b6d#615ed599213d45001efabe66',
+  conversation: '6162f2dfc68d34001ea476ac',
+  type: 'postback',
+  isBackchannel: false,
+  role: 'agent',
+  slug: 'WOlC00udy',
+  context: 'testbot.a4nplJer8l',
+  url: 'https://app.web1on1.chat/m/WOlC00udy',
+  contentType: 'text/plain',
+  services: [],
+  version: 1,
+  user: '615ed43c69423d001ef8ca9c',
+  text: 'Else',
+  items: [],
+  actions: [
+    {
+      type: 'postback',
+      size: 'compact',
+      default: false,
+      text: 'Something else',
+      payload: 'Else',
+    }
+  ],
+  results: [],
+  entities: [],
+  participants: [],
+  likes: [],
+  comments: [],
+  meta: { size: 'compact' },
+  createdBy: '615ed43c69423d001ef8ca9c',
+  updatedAt: '2021-10-10T14:04:20.660Z',
+  createdAt: '2021-10-10T14:04:20.660Z',
+  path: '6162f2e498188e0045fc667e',
+  level: 1,
+  id: '6162f2e498188e0045fc667e'
+}
