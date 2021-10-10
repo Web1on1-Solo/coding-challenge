@@ -22,7 +22,7 @@ ngrok http 3000
 production
 ```
 docker build . -t web1on1
-docker run -p 3000:3000 -e API_TOKEN=###########################################
+docker run -p 3000:3000 -e API_TOKEN=########################################### web1on1
 ```
 
 ### Test
@@ -31,6 +31,13 @@ All the functions have unit test.
 yarn test
 ```
 
+### What to expect
+Bot will  
+* greet you
+* ask about meeting subject
+* ask about custom meeting subject
+* open a webview the in future become a calendar to choose date time
+
 ### Structure
 For defining new flow we have to extend Flow class
 each flow has steps and each step has:
@@ -38,7 +45,7 @@ each flow has steps and each step has:
 * function
 * meta, options  
   
-**This is structure of the Framework**  
+**Structure of the Framework**  
 ![alt text](poc.png)
 ----------
 
@@ -55,8 +62,16 @@ When submitting your code, please answer the following questions by email:
 4. How would you track down a performance issue of your bot in production? Have you ever had to do this?  
 ```Most important part is communication and I think maybe because of some reasons(packet drop or ...) we face some missing message or wrong responses```
 5. How would you improve the Web1on1 APIs that you just used?  
-```Mostly on organizing the documentationa```
-
+```1) Mostly on organizing the documentation based on developers need 2) Creating a sandbox```
+# Future improvements
+* Ability of choosing dates
+* Working with Web1on1 locations
+* Creating reusable function for services
+* Developing e2e tests
+* Testing performance on high load
+* Developing health check
+* Implementing logging system
+* Configuring CI/CD
 ----------
 
 #### Thanks for Amazing challenge I hope to hear from you soon
