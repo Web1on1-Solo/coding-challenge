@@ -89,6 +89,15 @@ When submitting your code, please answer the following questions by email:
 4. How would you track down a performance issue of your bot in production? Have you ever had to do this?
 5. How would you improve the Web1on1 APIs that you just used?
 
+
+## Answers
+
+1. I missed the part on using ngrok for the webhooks. Besides that I didn't realise I had to use the JSON objects directly in the ```ask()``` (or similar) function calls
+2. Time estimate: +- 4 hours. For now it was 50/50 on learning the bot structures and implementing it. I would have added a calendar object and also tests for the bot it self. In my opinion the structure for asking time & date first before location isn't smart. When a calendar from a location will be added in later, you will have to change the structure (as given in the assignment). Besides that messages appear in different orders than given, probably because the calls are async. Not sure if there's a solution in the Bot API already (coulnd't really find it that fast). Same for when a chat is created with the bot, it does the action 2/3 times in a row (e.g., will 2/3 greet you).
+3. I'm suprised of the fact that creating a bot isn't that hard. Most of the features are already existing, "the foundation".
+4. Normally I would try to reproduce the problem first. Preferably with the same environment, for example running the app locally as well. After that it's pretty much debugging and checking which parts are struggling. 
+5. It's pretty clear already, but maybe add small examples (or results) of what certains action/types/etc will do for you. Instead of having to test it first.
+
 ----------
 
 #### Thanks for your time, we look forward to hearing from you!
