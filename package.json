@@ -1,6 +1,7 @@
 {
   "dependencies": {
-    "chipchat": "^0.1"
+    "chipchat": "^0.1",
+    "dotenv": "^10.0.0"
   },
   "scripts": {
     "start": "node bot.js"

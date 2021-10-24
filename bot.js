@@ -1,4 +1,6 @@
 const ChipChat = require('chipchat');
+const dotenv = require('dotenv');
+dotenv.config();
 
 const APPOINTMENT_TYPE = {
 	SOMETHING_ELSE: "0",
@@ -16,8 +18,8 @@ class VideoAppointmentBot {
     /**
      * Starting the video appointment bot
      */
-    static async start() {
-        const bot = new ChipChat({ token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MTc0NGY0NmIxZjg1NTAwMWUxMmRkOTMiLCJvcmdhbml6YXRpb24iOiI2MTcxYzg4YzRjNjYyMjIxZGZhZTMyMWEiLCJzY29wZSI6InZpZXdlciBhbm9ueW1vdXMgZ3Vlc3QgYWdlbnQgYm90IHN1cGVydmlzb3IgYWRtaW4iLCJncmFudF90eXBlIjoiYWNjZXNzX3Rva2VuIiwiaWF0IjoxNjM1MDcyNTA2LCJleHAiOjE2Mzc2NjQ1MDZ9.kkxjOEXVLGHhR9qZdP_ljacb-bYNnRkWROhBQ5j9Ddw' });
+    static start() {
+        const bot = new ChipChat({ token: process.env.API_TOKEN });
 
         bot.on('message.create.agent.chat', (message, chat) => {
             chat.say({
