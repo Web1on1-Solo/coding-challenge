@@ -77,11 +77,17 @@ const GET_LOCATIONS_STUB = async () => {
 //  i.e. WE JUST COPY THIS TO A GOOGLE CF OR WHATEVER ELSE
 const CHIPCHAT_LOGIC = {
 	// botstep 1: WELCOME MESSAGE
-	'1':async args => new Promise(done => {
+	'1':async args => new Promise(async done => {
 		if(args.message.actions != null&&args.message.actions[0] != null) {
 			switch (args.message.actions[0].payload) {
 				case 'NEW_CAR':
+					await args.conversation.set('type', 'New Car');
+
+					args.conversation.set('botstep', '2').then(() => CHIPCHAT_LOGIC['2'](args).then(done));
+					break;
 				case 'USED_CAR':
+					await args.conversation.set('type', 'Used Car');
+
 					args.conversation.set('botstep', '2').then(() => CHIPCHAT_LOGIC['2'](args).then(done));
 					break;
 				case 'SOMETHING_ELSE':
@@ -119,6 +125,7 @@ const CHIPCHAT_LOGIC = {
 			},
 		] });
 	}),
+	// botstep 3: PICK A LOCATION
 	'3':async args => new Promise(done => {
 		GET_LOCATIONS_STUB().then(locations => {
 			if(locations.length <= 10) args.conversation.set('botstep', '3.1').then(() => CHIPCHAT_LOGIC['3.1'](args).then(done));
@@ -127,6 +134,9 @@ const CHIPCHAT_LOGIC = {
 	}),
 	'3.1':async args => new Promise(async done => {
 		if(args.message.actions != null&&args.message.actions[0] != null) {
+			await args.conversation.set('location', args.message.actions[0].payload);
+
+			delete args.message.actions;
 			args.conversation.set('botstep', '4').then(() => CHIPCHAT_LOGIC['4'](args).then(done));
 		} else {
 			const locations = (await GET_LOCATIONS_STUB()).slice(0, 10);
@@ -139,11 +149,11 @@ const CHIPCHAT_LOGIC = {
 				});
 		}
 	}),
-	'3.2':async args => new Promise(done => {
+	'3.2':async args => new Promise(async done => {
 		args.conversation.set('botstep', '3.3').then(() => done({ send:{ text:'3/4 Please tell us your postal code, so we can book the video call with the right specialist on location.' } }));
 	}),
 	'3.3':async args => new Promise(async done => {
-		await args.conversation.set('locationname', args.message.text);
+		await args.conversation.set('location', args.message.text);
 
 		if(args.message.actions != null&&args.message.actions[0] != null) {
 			switch (args.message.actions[0].payload) {
@@ -159,14 +169,29 @@ const CHIPCHAT_LOGIC = {
 					{ payload:'YES', text:'Yes', type:'reply' },
 					{ payload:'NO', text:'No', type:'reply' }
 				],
-				text:'Thank you, the videocall will take place with someone from ' + args.conversation.get('locationname') + ', is this ok for you?'
+				text:'Thank you, the videocall will take place with someone from ' + args.conversation.get('location') + ', is this ok for you?'
 			} });
 	}),
-	'3.3.1':async args => new Promise(done => {
+	'3.3.1':async args => new Promise(async done => {
+		await args.conversation.set('location', args.message.text);
+
 		args.conversation.set('botstep', '4').then(() => CHIPCHAT_LOGIC['4'](args).then(done));
 	}),
+	// botstep 4: PICK A CONTACT METHOD
 	'4':async args => new Promise(done => {
-		done({ send:{
+		if(args.message.actions != null&&args.message.actions[0] != null) {
+			switch (args.message.actions[0].payload) {
+				case 'WHATSAPP':
+					args.conversation.set('botstep', '4.1').then(() => done({ send:{ text:'Can I have your phone number please so we can connect this chat to the WhatsApp channel.' } }));
+					break;
+				case 'PHONE':
+					args.conversation.set('botstep', '4.3').then(() => done({ send:{ text:'Please type your phone number.' } }));
+					break;
+				case 'EMAIL':
+					args.conversation.set('botstep', '4.2').then(() => done({ send:{ text:'Please type your email address.' } }));
+					break;
+			}
+		} else done({ send:{
 				actions:[
 					{ payload:'WHATSAPP', text:'WhatsApp', type:'reply' },
 					{ payload:'PHONE', text:'Phone', type:'reply' },
@@ -175,11 +200,78 @@ const CHIPCHAT_LOGIC = {
 				text:'4/4 How can we confirm the booking?'
 			} });
 	}),
+	'4.1':async args => new Promise(async done => {
+		await args.conversation.set('whatsapp', args.message.text);
+
+		args.conversation.set('botstep', '4.1.1').then(() => CHIPCHAT_LOGIC['4.1.1'](args).then(done));
+	}),
+	'4.1.1':async args => new Promise(done => {
+		if(args.message.actions != null&&args.message.actions[0] != null) {
+			switch (args.message.actions[0].payload) {
+				case 'YES':
+					args.conversation.set('botstep', '5.1').then(() => CHIPCHAT_LOGIC['5.1'](args).then(done));
+					break;
+			}
+		} else done({ send:[
+			{ text:'Thank you. I will send you a WhatsApp message in a few seconds. So get your phone and open WhatsApp 😃 and close this window.\nBy the way, you will also get this message in this chat window but please reply via WhatsApp.' },
+			{
+				actions:[
+					{ payload:'YES', text:'Yes', type:'reply' }
+				],
+				text:'Is it ok that we follow up on our inquiry via WhatsApp?'
+			} 
+		]})
+	}),
+	'4.2':async args => new Promise(async done => {
+		await args.conversation.set('email', args.message.text);
+
+		args.conversation.set('botstep', '5').then(() => CHIPCHAT_LOGIC['5'](args).then(done));
+	}),
+	'4.3':async args => new Promise(async done => {
+		await args.conversation.set('phone', args.message.text);
+
+		args.conversation.set('botstep', '5').then(() => CHIPCHAT_LOGIC['5'](args).then(done));
+	}),
+	// botstep 5: FAREWLELL AND BACKEND REGISTRATION
+	'5':async args => new Promise(done => {
+		if(args.message.actions != null&&args.message.actions[0] != null) {
+			switch (args.message.actions[0].payload) {
+				case 'ADD_TO_CALENDAR':
+					CHIPCHAT_LOGIC_SUBMIT({ conversation_id:args.conversation.id });
+					break;
+			}
+		} else done({ send:[
+			{ text:'We have all your data now.' },
+			{
+				actions:[{ payload:'ADD_TO_CALENDAR', text:'Add to my calendar', type:'reply' }],
+				text:'See you soon and have a nice day.'
+			}
+		] });
+	}),
+	'5.1':async args => new Promise(done => {
+		CHIPCHAT_LOGIC_SUBMIT({ conversation_id:args.conversation.id });
+		
+		done({ send:{ text:'Thank you for choosing WhatsApp as the channel for further communication. We will get back to you asap.' } });
+	})
 };
 
 // HERE WE PROCESS THE VALUES THAT COME FROM CHIPCHAT_LOGIC CALLS
 const CHIPCHAT_LOGIC_DISPATCH = async args => {
 	if(args != null&&args.data != null&&args.data.send != null) BOT.send(args.conversation.id, args.data.send);
+};
+
+const CHIPCHAT_LOGIC_SUBMIT = async args => {
+	BOT.conversation(args.conversation_id).then(conversation => {
+			console.log('SUBMIT THE APPOINTMENT');
+
+			console.log('BOTSTEP: ', conversation.get('botstep'));
+			console.log('APPOINTMENT TYPE: ', conversation.get('type'));
+			console.log('APPOINTMENT DATE: ', conversation.get('date'));
+			console.log('APPOINTMENT TIME: ', conversation.get('time'));
+			console.log('CUSTOMER\'S EMAIL: ', conversation.get('email'));
+			console.log('CUSTOMER\'S PHONE NUMBER: ', conversation.get('phone'));
+			console.log('CUSTOMER\'S WHATSAPP: ', conversation.get('whatsapp'));
+		});
 };
 
 // ** BOILERPLATE ** //
