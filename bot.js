@@ -61,6 +61,25 @@ const AES256_DECIPHER = data => {
 	} catch(e) {}
 };
 
+// HERE WE DEFINE THE MAIN LOGIC FOR OUR BOT, THIS IS CONVENIENT TO HAVE IN A SINGLE PLACE FOR CLARITY
+// ALL THE OTHER CODE IS EITHER BOILERPLATE OR PURE FUNCTIONS THAT SUPPORT THIS BEHAVIOR
+// IT IS ALSO CONVENIENT TO ABSTRACT THIS LOGIC AWAY FROM THE REST OF THE CHATBOT IMPLEMENTATION
+// SO THAT WE COULD EASILY MIGRATE THE 'BACKEND' THAT PROVIDES THE LATTER SERVICE
+//  i.e. WE JUST COPY THIS TO A GOOGLE CF OR WHATEVER ELSE
+const CHIPCHAT_LOGIC = {
+	// botstep 1: WELCOME MESSAGE
+	'1':async args => new Promise(done => {
+		done({ send:[
+			{ text:'Hi, I\'m your virtual assistant. I will help you schedule a video call appointment in 4 quick steps.' },
+			{ actions:[
+				{ type:'reply', text:'Used car', payload:'USED_CAR' },
+				{ type:'reply', text:'New car', payload:'NEW_CAR' },
+				{ type:'reply', text:'Something else', payload:'SOMETHING_ELSE' }
+			], text:'1/4: What would you like to discuss in our Video Call?' }
+		] });
+	})
+};
+
 MODULE.EXPRESS()
 	// .use(BOT.router()) // <-- I WAS NOT ABLE TO SET IT UP LIKE THIS, PERHAPS THE DOCS NEED A REVISION
 	.use(MODULE.EXPRESS.json())
@@ -75,7 +94,7 @@ MODULE.EXPRESS()
 	})
 
 	.post('/web1on1/webhook/', (req, res) => {
-		BOT.ingest(req.body); // ? - DOES THE NODE SDK PERFORM PAYLOAD VERIFICATION AUTOMATICALLY? I ASSUME YES, BUT HAVE TO CHECK IT OUT
+		BOT.ingest(req.body); // ? - DOES THE NODE SDK PERFORM PAYLOAD VERIFICATION AUTOMATICALLY? I ASSUME YES, BUT WOULD NEED TO CHECK THAT OUT
 
 		res.status(200).send();
 	})
@@ -93,3 +112,22 @@ MODULE.EXPRESS()
 	})
 
 	.listen(CONFIG.EXPRESS.PORT);
+
+BOT
+	.on('message', async (message, conversation) => {
+		// console.log('message', conversation.id);
+		console.log('message', JSON.stringify(message));
+		// console.log('conversation', JSON.stringify(conversation));
+
+		// WE NEED TO CHECK IF botstep IS SET, THIS IS EQUIVALENT TO SOME SORT OF MINIMAL SET UP
+		await new Promise(done => {
+				if(conversation.get('botstep') == null) conversation.set('botstep', '1').then(done);
+				else done();
+			});
+
+		// WE DISPATCH THE CURRENT MESSAGE TO THE APPROPRIATE RESPONDER BASED ON THE CURRENT botstep
+		if(CHIPCHAT_LOGIC[conversation.get('botstep')] != null) CHIPCHAT_LOGIC[conversation.get('botstep')]({ conversation:conversation, message:message }).then(d => {
+			// HERE WE CHECK IF WE RECEIVE AN OBJECT IN THE CALLBACK, IF THAT'S THE CASE WE SHOULD FULFILL IT'S INTENT, WHICH IS CURRENTLY QUITE SIMPLE (BOT.send ...)
+			if(d != null&&d.send != null) BOT.send(conversation.id, d.send);
+		});
+	});
