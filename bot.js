@@ -20,7 +20,7 @@ const BOT = new MODULE.CHIPCHAT({
 		token:CONFIG.WEB1ON1.BOT['API Token']
 	});
 
-// ** FUNCTION DEFINITIONS **
+// ** FUNCTION DEFINITIONS ** //
 
 const HTTPS_POST_PATCH_MESSAGE = async args => new Promise(done => {
 		// (I DON'T KNOW WHAT YOU USE TO DOCUMENT CODE BUT IN THE MEANTIME I¡LL EXPLAIN LIKE THIS)
@@ -61,6 +61,17 @@ const AES256_DECIPHER = data => {
 	} catch(e) {}
 };
 
+// THIS IS A STUB FUNCTION TO EMULATE A CHECK FOR THE NUMBER OF ORGANIZATIONS' LOCATIONS
+const GET_LOCATIONS_STUB = async () => new Promise(done => {
+	done(Array.from({ length:Math.floor(Math.random()*20) }, (a, b, c) => {
+		console.log('a, b, c', a, b, c);
+
+		return { name:'Location 10' };
+	}));
+});
+
+// ** CHATBOT LOGIC ** //
+
 // HERE WE DEFINE THE MAIN LOGIC FOR OUR BOT, THIS IS CONVENIENT TO HAVE IN A SINGLE PLACE FOR CLARITY
 // ALL THE OTHER CODE IS EITHER BOILERPLATE OR PURE FUNCTIONS THAT SUPPORT THIS BEHAVIOR
 // IT IS ALSO CONVENIENT TO ABSTRACT THIS LOGIC AWAY FROM THE REST OF THE CHATBOT IMPLEMENTATION
@@ -69,19 +80,67 @@ const AES256_DECIPHER = data => {
 const CHIPCHAT_LOGIC = {
 	// botstep 1: WELCOME MESSAGE
 	'1':async args => new Promise(done => {
-		done({ send:[
-			{ text:'Hi, I\'m your virtual assistant. I will help you schedule a video call appointment in 4 quick steps.' },
-			{ actions:[
-				{ type:'reply', text:'Used car', payload:'USED_CAR' },
-				{ type:'reply', text:'New car', payload:'NEW_CAR' },
-				{ type:'reply', text:'Something else', payload:'SOMETHING_ELSE' }
-			], text:'1/4: What would you like to discuss in our Video Call?' }
+		if(args.message.actions != null&&args.message.actions[0] != null) {
+			switch (args.message.actions[0].payload) {
+				case 'NEW_CAR':
+				case 'USED_CAR':
+					args.conversation.set('botstep', '2').then(() => CHIPCHAT_LOGIC['2'](args).then(done));
+					break;
+				case 'SOMETHING_ELSE':
+					args.conversation.set('botstep', '1.1').then(() => {
+						done({ send:{ text:'What would you like to talk about?' } });
+					});
+					break;
+			}
+		} else done({ send:[
+				{ text:'Hi, I\'m your virtual assistant. I will help you schedule a video call appointment in 4 quick steps.' },
+				{ actions:[
+					{ type:'reply', text:'Used car', payload:'USED_CAR' },
+					{ type:'reply', text:'New car', payload:'NEW_CAR' },
+					{ type:'reply', text:'Something else', payload:'SOMETHING_ELSE' }
+				], text:'1/4: What would you like to discuss in our Video Call?' }
+			] });
+	}),
+	'1.1':async args => new Promise(done => {
+		args.conversation.set('botstep', '2').then(() => CHIPCHAT_LOGIC['2'](args).then(done));
+	}),
+	// botstep 2: PICK A DATE AND A TIME
+	'2':async args => new Promise(done => {
+		// WHEN THE USER OPENS THE WEBVIEW A postback MESSAGE IS TRIGGERED AND WE DO NOT WISH TO SEND THE USER THE WEBVIEW AGAIN, SO WE HAVE TO CHECK FOR THAT AND THE ONLY PROPERTY THAT DISTINGUISHES THE WEBVIEW MESSAGE IS THE PROPERTY meta.size
+		if(args.message.meta == null||args.message.meta.size != 'full') done({ send:[
+			{
+				actions:[{
+					fallback:'https://bot.moralestapia.com/misc/datepicker/?data=' + AES256_CIPHER({ conversation_id:args.conversation.id }),
+					size:'full',
+					text:'Set up your appointment',
+					type:'webview',
+					uri:'https://bot.moralestapia.com/misc/datepicker/?data=' + AES256_CIPHER({ conversation_id:args.conversation.id })
+				}],
+				role:'agent',
+				text:'2/4 Thank you. Please choose your preferred date and time.'
+			},
 		] });
+	}),
+	'3':async args => new Promise(done => {
+		// done({ send:{ text:'3/4 Thank you. Please choose your preferred location.' } });
+
+		GET_LOCATIONS.then(locations => {
+			console.log('locations', locations);
+
+			done({ send:{ text:'3/4 Thank you. Please choose your preferred location.' } });
+		});
 	})
 };
 
+// HERE WE PROCESS THE VALUES THAT COME FROM CHIPCHAT_LOGIC CALLS
+const CHIPCHAT_LOGIC_DISPATCH = async args => {
+	if(args != null&&args.data != null&&args.data.send != null) BOT.send(args.conversation.id, args.data.send);
+};
+
+// ** BOILERPLATE ** //
+
 MODULE.EXPRESS()
-	// .use(BOT.router()) // <-- I WAS NOT ABLE TO SET IT UP LIKE THIS, PERHAPS THE DOCS NEED A REVISION
+	// .use(BOT.router()) // <-- I WAS NOT ABLE TO SET UP CHIPCHAT LIKE THIS, I WILL FIGURE IT OUT LATER IF THERE'S TIME, NOT A PRIORITY TBH
 	.use(MODULE.EXPRESS.json())
 
 	.get('/misc/datepicker', (req, res) => MODULE.FS.readFile(__dirname + '/misc/datepicker/index.html', (e, d) => res.status(200).append('Content-Type', 'text/html;charset=utf-8').send(d)))
@@ -94,18 +153,21 @@ MODULE.EXPRESS()
 	})
 
 	.post('/web1on1/webhook/', (req, res) => {
-		BOT.ingest(req.body); // ? - DOES THE NODE SDK PERFORM PAYLOAD VERIFICATION AUTOMATICALLY? I ASSUME YES, BUT WOULD NEED TO CHECK THAT OUT
+		BOT.ingest(req.body); // ? - DOES THE NODE SDK PERFORM PAYLOAD VERIFICATION AUTOMATICALLY? I ASSUME YES, BUT WOULD HAVE TO CHECK THAT OUT LATER
 
 		res.status(200).send();
 	})
 
 	.post('/web1on1/webhook/appointment/setup', (req, res) => {
-		console.log('data', req.body);
-
 		if(req.body.data != null) {
 			req.body.data.data = AES256_DECIPHER(req.body.data.data);
 
-			if(req.body.data.data != null&&req.body.data.data.conversation_id != null) BOT.send(req.body.data.data.conversation_id, { text:Date.now() + ':TIME AND DATE SET ...' }).then(d => console.log('DONE ...'));
+			if(req.body.data.data != null&&req.body.data.data.conversation_id != null) BOT.conversation(req.body.data.data.conversation_id).then(async conversation => {
+				await conversation.set('date', req.body.data.Date);
+				await conversation.set('time', req.body.data.Time);
+
+				conversation.set('botstep', '3').then(() => CHIPCHAT_LOGIC['3']({ conversation:conversation }).then(data => CHIPCHAT_LOGIC_DISPATCH({ conversation:conversation, data:data })));
+			});
 		}
 
 		res.status(200).send();
@@ -115,19 +177,23 @@ MODULE.EXPRESS()
 
 BOT
 	.on('message', async (message, conversation) => {
-		// console.log('message', conversation.id);
-		console.log('message', JSON.stringify(message));
+		// SOME DEBUG MESSAGES LEFT HERE FOR CONVENIENCE (IGNORE)
+		// console.log('conversation.id', conversation.id);
 		// console.log('conversation', JSON.stringify(conversation));
+		console.log('message', JSON.stringify(message));
 
-		// WE NEED TO CHECK IF botstep IS SET, THIS IS EQUIVALENT TO SOME SORT OF MINIMAL SET UP
+		// A SMALL CHECK TO RESETS THE CHATBOT IF NEEDED
 		await new Promise(done => {
-				if(conversation.get('botstep') == null) conversation.set('botstep', '1').then(done);
+				if(message.text.toLowerCase().trim() == 'start over') conversation.set('botstep', '').then(done);
+				else done();
+			});
+
+		// WE NEED TO CHECK IF botstep IS SET, OTHERWISE INITIALIZE IT TO '1'
+		await new Promise(done => {
+				if(conversation.get('botstep') == null||conversation.get('botstep') == '') conversation.set('botstep', '1').then(done);
 				else done();
 			});
 
 		// WE DISPATCH THE CURRENT MESSAGE TO THE APPROPRIATE RESPONDER BASED ON THE CURRENT botstep
-		if(CHIPCHAT_LOGIC[conversation.get('botstep')] != null) CHIPCHAT_LOGIC[conversation.get('botstep')]({ conversation:conversation, message:message }).then(d => {
-			// HERE WE CHECK IF WE RECEIVE AN OBJECT IN THE CALLBACK, IF THAT'S THE CASE WE SHOULD FULFILL IT'S INTENT, WHICH IS CURRENTLY QUITE SIMPLE (BOT.send ...)
-			if(d != null&&d.send != null) BOT.send(conversation.id, d.send);
-		});
+		if(CHIPCHAT_LOGIC[conversation.get('botstep')] != null) CHIPCHAT_LOGIC[conversation.get('botstep')]({ conversation:conversation, message:message }).then(data => CHIPCHAT_LOGIC_DISPATCH({ conversation:conversation, data:data }));
 	});
