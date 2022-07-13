@@ -62,13 +62,11 @@ const AES256_DECIPHER = data => {
 };
 
 // THIS IS A STUB FUNCTION TO EMULATE A CHECK FOR THE NUMBER OF ORGANIZATIONS' LOCATIONS
-const GET_LOCATIONS_STUB = async () => new Promise(done => {
-	done(Array.from({ length:Math.floor(Math.random()*20) }, (a, b, c) => {
-		console.log('a, b, c', a, b, c);
-
-		return { name:'Location 10' };
-	}));
-});
+const GET_LOCATIONS_STUB = async () => {
+	return Array.from({ length:Math.floor(Math.random()*20) }, (a, b) => {
+		return { name:'Location ' + (b+1) };
+	});
+};
 
 // ** CHATBOT LOGIC ** //
 
@@ -95,9 +93,9 @@ const CHIPCHAT_LOGIC = {
 		} else done({ send:[
 				{ text:'Hi, I\'m your virtual assistant. I will help you schedule a video call appointment in 4 quick steps.' },
 				{ actions:[
-					{ type:'reply', text:'Used car', payload:'USED_CAR' },
-					{ type:'reply', text:'New car', payload:'NEW_CAR' },
-					{ type:'reply', text:'Something else', payload:'SOMETHING_ELSE' }
+					{ payload:'USED_CAR', text:'Used car', type:'reply' },
+					{ payload:'NEW_CAR', text:'New car', type:'reply' },
+					{ payload:'SOMETHING_ELSE', text:'Something else', type:'reply' }
 				], text:'1/4: What would you like to discuss in our Video Call?' }
 			] });
 	}),
@@ -122,14 +120,61 @@ const CHIPCHAT_LOGIC = {
 		] });
 	}),
 	'3':async args => new Promise(done => {
-		// done({ send:{ text:'3/4 Thank you. Please choose your preferred location.' } });
-
-		GET_LOCATIONS.then(locations => {
-			console.log('locations', locations);
-
-			done({ send:{ text:'3/4 Thank you. Please choose your preferred location.' } });
+		GET_LOCATIONS_STUB().then(locations => {
+			if(locations.length <= 10) args.conversation.set('botstep', '3.1').then(() => CHIPCHAT_LOGIC['3.1'](args).then(done));
+			else args.conversation.set('botstep', '3.2').then(() => CHIPCHAT_LOGIC['3.2'](args).then(done));
 		});
-	})
+	}),
+	'3.1':async args => new Promise(async done => {
+		if(args.message.actions != null&&args.message.actions[0] != null) {
+			args.conversation.set('botstep', '4').then(() => CHIPCHAT_LOGIC['4'](args).then(done));
+		} else {
+			const locations = (await GET_LOCATIONS_STUB()).slice(0, 10);
+
+			done({ send:{
+					actions:locations.map(v => {
+						return { payload:v.name, text:v.name, type:'reply' };
+					}),
+					text:'3/4 Thank you. Please choose your preferred location.' }
+				});
+		}
+	}),
+	'3.2':async args => new Promise(done => {
+		args.conversation.set('botstep', '3.3').then(() => done({ send:{ text:'3/4 Please tell us your postal code, so we can book the video call with the right specialist on location.' } }));
+	}),
+	'3.3':async args => new Promise(async done => {
+		await args.conversation.set('locationname', args.message.text);
+
+		if(args.message.actions != null&&args.message.actions[0] != null) {
+			switch (args.message.actions[0].payload) {
+				case 'YES':
+					args.conversation.set('botstep', '4').then(() => CHIPCHAT_LOGIC['4'](args).then(done));
+					break;
+				case 'NO':
+					args.conversation.set('botstep', '3.3.1').then(() => done({ send:{ text:'OK, no problem. Could you please tell us the name of the location you would like to have the video call with?' } }));
+					break;
+			}
+		} else done({ send:{
+				actions:[
+					{ payload:'YES', text:'Yes', type:'reply' },
+					{ payload:'NO', text:'No', type:'reply' }
+				],
+				text:'Thank you, the videocall will take place with someone from ' + args.conversation.get('locationname') + ', is this ok for you?'
+			} });
+	}),
+	'3.3.1':async args => new Promise(done => {
+		args.conversation.set('botstep', '4').then(() => CHIPCHAT_LOGIC['4'](args).then(done));
+	}),
+	'4':async args => new Promise(done => {
+		done({ send:{
+				actions:[
+					{ payload:'WHATSAPP', text:'WhatsApp', type:'reply' },
+					{ payload:'PHONE', text:'Phone', type:'reply' },
+					{ payload:'EMAIL', text:'Email', type:'reply' }
+				],
+				text:'4/4 How can we confirm the booking?'
+			} });
+	}),
 };
 
 // HERE WE PROCESS THE VALUES THAT COME FROM CHIPCHAT_LOGIC CALLS
@@ -158,6 +203,7 @@ MODULE.EXPRESS()
 		res.status(200).send();
 	})
 
+	// HERE, THE RESULT FROM THE WEBVIEW IS PARSED (AND VERIFIED IMPLICITLY), THEIR VALUES ARE STORED IN THE metaDATA OF THE CONVERSATION AND THE NEXT STEP OF THE CONVERSATIONAL LOGIC IS CALLED
 	.post('/web1on1/webhook/appointment/setup', (req, res) => {
 		if(req.body.data != null) {
 			req.body.data.data = AES256_DECIPHER(req.body.data.data);
@@ -166,7 +212,7 @@ MODULE.EXPRESS()
 				await conversation.set('date', req.body.data.Date);
 				await conversation.set('time', req.body.data.Time);
 
-				conversation.set('botstep', '3').then(() => CHIPCHAT_LOGIC['3']({ conversation:conversation }).then(data => CHIPCHAT_LOGIC_DISPATCH({ conversation:conversation, data:data })));
+				conversation.set('botstep', '3').then(() => CHIPCHAT_LOGIC['3']({ conversation:conversation, message:{} }).then(data => CHIPCHAT_LOGIC_DISPATCH({ conversation:conversation, data:data })));
 			});
 		}
 
